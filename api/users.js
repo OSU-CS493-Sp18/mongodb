@@ -1,5 +1,9 @@
 const router = module.exports = require('express').Router();
 
+function validateUserObject(user) {
+  return user && user.userID && user.name && user.email;
+}
+
 function getLodgingsByOwnerID(ownerID, mysqlPool) {
   return new Promise((resolve, reject) => {
     mysqlPool.query('SELECT * FROM lodgings WHERE ownerid = ?', [ ownerID ], function (err, results) {

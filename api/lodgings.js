@@ -1,5 +1,11 @@
 const router = module.exports = require('express').Router();
 
+function validateLodgingObject(lodging) {
+  return lodging && lodging.name && lodging.price && lodging.ownerID &&
+    lodging.street && lodging.city && lodging.state && lodging.zip &&
+    lodging.price && lodging.ownerID;
+}
+
 function getLodgingsCount(mysqlPool) {
   return new Promise((resolve, reject) => {
     mysqlPool.query('SELECT COUNT(*) AS count FROM lodgings', function (err, results) {
@@ -92,7 +98,7 @@ function insertNewLodging(lodging, mysqlPool) {
 router.post('/', function (req, res, next) {
   const mysqlPool = req.app.locals.mysqlPool;
 
-  if (req.body && req.body.name && req.body.price && req.body.ownerID) {
+  if (validateLodgingObject(req.body)) {
     insertNewLodging(req.body, mysqlPool)
       .then((id) => {
         res.status(201).json({
@@ -171,7 +177,7 @@ router.put('/:lodgingID', function (req, res, next) {
   const mysqlPool = req.app.locals.mysqlPool;
 
   const lodgingID = parseInt(req.params.lodgingID);
-  if (req.body && req.body.name && req.body.price && req.body.ownerID) {
+  if (validateLodgingObject(req.body)) {
     updateLodgingByID(lodgingID, req.body, mysqlPool)
       .then((updateSuccessful) => {
         if (updateSuccessful) {
