@@ -1,4 +1,4 @@
-const router = module.exports = require('express').Router();
+const router = require('express').Router();
 
 function validateLodgingObject(lodging) {
   return lodging && lodging.name && lodging.price && lodging.ownerID &&
@@ -233,3 +233,5 @@ router.delete('/:lodgingID', function (req, res, next) {
       });
     });
 });
+
+exports.router = router;

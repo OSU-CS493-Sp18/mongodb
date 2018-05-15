@@ -1,10 +1,20 @@
 const logger = require('./lib/logger');
 const mysql = require('mysql');
+const MongoClient = require('mongodb').MongoClient;
 const express = require('express');
 const bodyParser = require('body-parser');
 
 const app = express();
 const port = process.env.PORT || 8000;
+
+const mongoHost = process.env.MONGO_HOST;
+const mongoPort = process.env.MONGO_PORT || '27017';
+const mongoDBName = process.env.MONGO_DATABASE;
+const mongoUser = process.env.MONGO_USER;
+const mongoPassword = process.env.MONGO_PASSWORD;
+
+const mongoURL = `mongodb://${mongoUser}:${mongoPassword}@${mongoHost}:${mongoPort}/${mongoDBName}`
+console.log("== Mongo URL:", mongoURL);
 
 const mysqlHost = process.env.MYSQL_HOST;
 const mysqlPort = process.env.MYSQL_PORT || '3306';
@@ -34,6 +44,11 @@ app.use('*', function (req, res, next) {
   });
 });
 
-app.listen(port, function() {
-  console.log("== Server is running on port", port);
+MongoClient.connect(mongoURL, function (err, client) {
+  if (!err) {
+    app.locals.mongoDB = client.db(mongoDBName);
+    app.listen(port, function() {
+      console.log("== Server is running on port", port);
+    });
+  }
 });
