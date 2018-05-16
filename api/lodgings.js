@@ -1,9 +1,10 @@
 const router = require('express').Router();
+const { addLodgingToUser, getUserByID } = require('./users');
 
 function validateLodgingObject(lodging) {
   return lodging && lodging.name && lodging.price && lodging.ownerID &&
     lodging.street && lodging.city && lodging.state && lodging.zip &&
-    lodging.price && lodging.ownerID;
+    lodging.price;
 }
 
 function getLodgingsCount(mysqlPool) {
@@ -68,7 +69,7 @@ router.get('/', function (req, res) {
     });
 });
 
-function insertNewLodging(lodging, mysqlPool) {
+function insertNewLodging(lodging, mysqlPool, mongoDB) {
   return new Promise((resolve, reject) => {
     const lodgingValues = {
       id: null,
@@ -92,14 +93,23 @@ function insertNewLodging(lodging, mysqlPool) {
         }
       }
     );
+  }).then((id) => {
+    return addLodgingToUser(id, lodging.ownerID, mongoDB);
   });
 }
 
 router.post('/', function (req, res, next) {
   const mysqlPool = req.app.locals.mysqlPool;
-
+  const mongoDB = req.app.locals.mongoDB;
   if (validateLodgingObject(req.body)) {
-    insertNewLodging(req.body, mysqlPool)
+    getUserByID(req.body.ownerID, mongoDB)
+      .then((user) => {
+        if (user) {
+          return insertNewLodging(req.body, mysqlPool, mongoDB);
+        } else {
+          return Promise.reject(400);
+        }
+      })
       .then((id) => {
         res.status(201).json({
           id: id,
@@ -109,9 +119,15 @@ router.post('/', function (req, res, next) {
         });
       })
       .catch((err) => {
-        res.status(500).json({
-          error: "Error inserting lodging into DB.  Please try again later."
-        });
+        if (err === 400) {
+          res.status(400).json({
+            error: `Invalid owner ID: ${req.body.ownerID}.`
+          });
+        } else {
+          res.status(500).json({
+            error: "Error inserting lodging into DB.  Please try again later."
+          });
+        }
       });
   } else {
     res.status(400).json({

@@ -1,4 +1,5 @@
 const router = require('express').Router();
+const ObjectId = require('mongodb').ObjectId;
 
 function validateUserObject(user) {
   return user && user.userID && user.name && user.email;
@@ -45,6 +46,41 @@ router.post('/', function (req, res) {
   }
 });
 
+function generateUserIDQuery(userID) {
+  if (ObjectId.isValid(userID)) {
+    return { _id: new ObjectId(userID) };
+  } else {
+    return { userID: userID };
+  }
+}
+
+function getUserByID(userID, mongoDB) {
+  const usersCollection = mongoDB.collection('users');
+  const query = generateUserIDQuery(userID);
+  console.log('== query:', query);
+  return usersCollection.find(query).toArray()
+    .then((results) => {
+      return Promise.resolve(results[0]);
+    });
+}
+
+router.get('/:userID', function (req, res, next) {
+  const mongoDB = req.app.locals.mongoDB;
+  getUserByID(req.params.userID, mongoDB)
+    .then((user) => {
+      if (user) {
+        res.status(200).json(user);
+      } else {
+        next();
+      }
+    })
+    .catch((err) => {
+      res.status(500).json({
+        error: "Failed to fetch user."
+      });
+    });
+});
+
 function getLodgingsByOwnerID(ownerID, mysqlPool) {
   return new Promise((resolve, reject) => {
     mysqlPool.query('SELECT * FROM lodgings WHERE ownerid = ?', [ ownerID ], function (err, results) {
@@ -75,4 +111,17 @@ router.get('/:userID/lodgings', function (req, res, next) {
 
 });
 
+function addLodgingToUser(lodgingID, userID, mongoDB) {
+  const usersCollection = mongoDB.collection('users');
+  const query = generateUserIDQuery(userID);
+  return usersCollection.updateOne(
+    query,
+    { $push: { lodgings: lodgingID } }
+  ).then(() => {
+    return Promise.resolve(lodgingID);
+  });
+}
+
 exports.router = router;
+exports.getUserByID = getUserByID;
+exports.addLodgingToUser = addLodgingToUser;
